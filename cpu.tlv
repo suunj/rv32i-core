@@ -1,0 +1,35 @@
+\m4_TLV_version 1d: tl-x.org
+\SV
+   m4_include_lib(['https://raw.githubusercontent.com/BalaDhinesh/RISC-V_MYTH_Workshop/master/tlv_lib/risc-v_shell_lib.tlv'])
+
+\SV
+   m4_makerchip_module   // (Expanded in Nav-TLV pane.)
+\TLV
+
+   // ===== INIT =====
+   m4_asm(ADD, r10, r0, r0)             // r10 = 0 (결과 저장용)
+   m4_asm(ADD, r14, r10, r0)            // r14 = 0 (누적 합계)
+   m4_asm(ADDI, r12, r10, 1010)         // r12 = 10 (루프 한계값)
+   m4_asm(ADD, r13, r10, r0)            // r13 = 0 (카운터)
+   // ===== LOOP =====
+   m4_asm(ADD, r14, r13, r14)           // r14 += r13
+   m4_asm(ADDI, r13, r13, 1)            // r13++
+   m4_asm(BLT, r13, r12, 1111111111000) // r13 < r12이면 루프로 점프 (오프셋 -8)
+   // ===== RESULT =====
+   m4_asm(ADD, r10, r14, r0)            // r10 = r14 (최종 합 45)
+   
+   m4_define_hier(['M4_IMEM'], M4_NUM_INSTRS)
+
+   |cpu
+      @0
+         $reset = *reset;
+         $pc[31:0] = >>1$reset ? 32'b0 : >>1$pc + 32'd4;
+      @1
+         $imem_rd_addr[M4_IMEM_INDEX_CNT-1:0] = $pc[M4_IMEM_INDEX_CNT+1:2];
+         $imem_rd_en = !$reset;
+         $instr[31:0] = $imem_rd_data[31:0];
+   *passed = *cyc_cnt > 40;
+   *failed = 1'b0;
+   
+\SV
+   endmodule
