@@ -27,7 +27,23 @@
       @1
          $imem_rd_addr[M4_IMEM_INDEX_CNT-1:0] = $pc[M4_IMEM_INDEX_CNT+1:2];
          $imem_rd_en = !$reset;
+
          $instr[31:0] = $imem_rd_data[31:0];
+                  $is_u_instr = $instr[6:2] ==? 5'b0x101;      // U-type (LUI, AUIPC)
+         
+         $is_s_instr = $instr[6:2] ==? 5'b0100x;      // S-type (SW, SB, SH)
+         
+         $is_r_instr = $instr[6:2] ==? 5'b01011 ||    // R-type (ADD, SUB, AND, OR...)
+                       $instr[6:2] ==? 5'b011x0 ||
+                       $instr[6:2] ==? 5'b10100;
+         
+         $is_j_instr = $instr[6:2] ==? 5'b11011;      // J-type (JAL)
+         
+         $is_i_instr = $instr[6:2] ==? 5'b0000x ||    // I-type (ADDI, LW, JALR...)
+                       $instr[6:2] ==? 5'b001x0 ||
+                       $instr[6:2] ==? 5'b11001;
+         
+         $is_b_instr = $instr[6:2] ==? 5'b11000;      // B-type (BEQ, BNE, BLT...)
    *passed = *cyc_cnt > 40;
    *failed = 1'b0;
    
