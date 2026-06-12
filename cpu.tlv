@@ -79,8 +79,24 @@
          $is_addi = $dec_bits ==? 11'bx_000_0010011;  // Add Immediate
          $is_add  = $dec_bits ==? 11'b0_000_0110011;  // Add Register
 
+         // Port 1: rs1 읽기
+         $rf_rd_en1 = $rs1_valid;            // rs1이 유효할 때만 읽기 활성화
+         $rf_rd_index1[4:0] = $rs1;          // 읽을 레지스터 번호
+         
+         // Port 2: rs2 읽기
+         $rf_rd_en2 = $rs2_valid;
+         $rf_rd_index2[4:0] = $rs2;
+         
+         // 읽은 값을 소스 값으로 캡처 (ALU 입력이 됨)
+         $src1_value[31:0] = $rf_rd_data1;   // rs1 값
+         $src2_value[31:0] = $rf_rd_data2;   // rs2 값
+
    *passed = *cyc_cnt > 40;
    *failed = 1'b0;
+
+   |cpu
+      m4+imem(@1)    // Args: (read stage)
+      m4+rf(@1, @1)  // Args: (read stage, write stage)
 
     m4+cpu_viz(@4)
 \SV
