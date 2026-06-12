@@ -45,7 +45,7 @@
          
          $is_b_instr = $instr[6:2] ==? 5'b11000;      // B-type (BEQ, BNE, BLT...)
 
-                  $imm[31:0] = $is_i_instr ? {{21{$instr[31]}}, $instr[30:20]} :
+         $imm[31:0] = $is_i_instr ? {{21{$instr[31]}}, $instr[30:20]} :
                       $is_s_instr ? {{21{$instr[31]}}, $instr[30:25], $instr[11:7]} :
                       $is_b_instr ? {{20{$instr[31]}}, $instr[7], $instr[30:25],
                                      $instr[11:8], 1'b0} :
@@ -53,8 +53,35 @@
                       $is_j_instr ? {{12{$instr[31]}}, $instr[19:12], $instr[20],
                                      $instr[30:21], 1'b0} :
                       32'b0;
+
+         $opcode[6:0] = $instr[6:0];
+         $funct3[2:0] = $instr[14:12];
+         $funct7[6:0] = $instr[31:25];
+         $rs1[4:0]    = $instr[19:15];   // 소스 레지스터 1
+         $rs2[4:0]    = $instr[24:20];   // 소스 레지스터 2
+         $rd[4:0]     = $instr[11:7];    // 목적지 레지스터
+         
+         $rs1_valid    = $is_r_instr || $is_i_instr || $is_s_instr || $is_b_instr;
+         $rs2_valid    = $is_r_instr || $is_s_instr || $is_b_instr;
+         $rd_valid     = $is_r_instr || $is_i_instr || $is_u_instr || $is_j_instr;
+         $funct3_valid = !$is_u_instr && !$is_j_instr;
+         $imm_valid    = !$is_r_instr;
+         
+         // funct7[5] + funct3 + opcode = 1+3+7 = 11비트 디코드 벡터
+         $dec_bits[10:0] = {$funct7[5], $funct3, $opcode};
+         
+         $is_beq  = $dec_bits ==? 11'bx_000_1100011;  // Branch if Equal
+         $is_bne  = $dec_bits ==? 11'bx_001_1100011;  // Branch if Not Equal
+         $is_blt  = $dec_bits ==? 11'bx_100_1100011;  // Branch if Less Than (signed)
+         $is_bge  = $dec_bits ==? 11'bx_101_1100011;  // Branch if Greater/Equal (signed)
+         $is_bltu = $dec_bits ==? 11'bx_110_1100011;  // Branch if Less Than (unsigned)
+         $is_bgeu = $dec_bits ==? 11'bx_111_1100011;  // Branch if Greater/Equal (unsigned)
+         $is_addi = $dec_bits ==? 11'bx_000_0010011;  // Add Immediate
+         $is_add  = $dec_bits ==? 11'b0_000_0110011;  // Add Register
+
    *passed = *cyc_cnt > 40;
    *failed = 1'b0;
-   
+
+    m4+cpu_viz(@4)
 \SV
    endmodule
