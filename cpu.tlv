@@ -26,6 +26,8 @@
          $reset = *reset;
          $pc[31:0] = >>1$reset ? 32'b0 :
                      >>1$taken_branch ? >>1$br_target_pc :
+                     >>1$is_jal       ? >>1$br_target_pc :
+                     >>1$is_jalr      ? >>1$jalr_target_pc :
                                         >>1$pc + 32'd4;
       @1
          $imem_rd_addr[M4_IMEM_INDEX_CNT-1:0] = $pc[M4_IMEM_INDEX_CNT+1:2];
@@ -82,6 +84,8 @@
          $is_addi = $dec_bits ==? 11'bx_000_0010011;  // Add Immediate
          $is_add  = $dec_bits ==? 11'b0_000_0110011;  // Add Register
          $is_load = $opcode ==? 7'b0000011;
+         $is_jal  = $opcode ==? 7'b1101111;
+         $is_jalr = $dec_bits ==? 11'bx_000_1100111;
 
          // Port 1: rs1 읽기
          $rf_rd_en1 = $rs1_valid;            // rs1이 유효할 때만 읽기 활성화
@@ -98,6 +102,7 @@
          $result[31:0] = $is_addi ? $src1_value + $imm :        // ADDI: rs1 + imm
                          $is_add  ? $src1_value + $src2_value : // ADD:  rs1 + rs2
                          ($is_load || $is_s_instr) ? $src1_value + $imm :
+                         ($is_jal || $is_jalr) ? $inc_pc :
                          32'bx;
 
          $rf_wr_en = $rd_valid && $rd != 5'b0;   // rd 유효하고 x0이 아닐 때만 쓰기
@@ -116,6 +121,8 @@
                          $is_bgeu ? ($src1_value >= $src2_value) :
                                     1'b0;
          $br_target_pc[31:0] = $pc + $imm;
+         $inc_pc[31:0] = $pc + 32'd4;
+         $jalr_target_pc[31:0] = $src1_value + $imm;
    *passed = |cpu/xreg[17]>>5$value == (1+2+3+4+5+6+7+8+9);
    *failed = 1'b0;
 
