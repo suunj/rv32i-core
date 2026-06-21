@@ -25,10 +25,10 @@
       @0
          $reset = *reset;
          $pc[31:0] = >>1$reset ? 32'b0 :
-                     >>1$taken_branch ? >>1$br_target_pc :
-                     >>1$is_jal       ? >>1$br_target_pc :
-                     >>1$is_jalr      ? >>1$jalr_target_pc :
-                                        >>1$pc + 32'd4;
+                     >>3$valid_taken_branch ? >>3$br_target_pc :
+                     >>3$valid_jump && >>3$is_jal  ? >>3$br_target_pc :
+                     >>3$valid_jump && >>3$is_jalr ? >>3$jalr_target_pc :
+                                                     >>1$pc + 32'd4;
       @1
          $imem_rd_addr[M4_IMEM_INDEX_CNT-1:0] = $pc[M4_IMEM_INDEX_CNT+1:2];
          $imem_rd_en = !$reset;
@@ -69,9 +69,7 @@
          $rs1_valid    = $is_r_instr || $is_i_instr || $is_s_instr || $is_b_instr;
          $rs2_valid    = $is_r_instr || $is_s_instr || $is_b_instr;
          $rd_valid     = $is_r_instr || $is_i_instr || $is_u_instr || $is_j_instr;
-         $funct3_valid = !$is_u_instr && !$is_j_instr;
-         $imm_valid    = !$is_r_instr;
-         
+      @2
          // funct7[5] + funct3 + opcode = 1+3+7 = 11비트 디코드 벡터
          $dec_bits[10:0] = {$funct7[5], $funct3, $opcode};
          
@@ -86,6 +84,7 @@
          $is_load = $opcode ==? 7'b0000011;
          $is_jal  = $opcode ==? 7'b1101111;
          $is_jalr = $dec_bits ==? 11'bx_000_1100111;
+         $is_jump = $is_jal || $is_jalr;
 
          // Port 1: rs1 읽기
          $rf_rd_en1 = $rs1_valid;            // rs1이 유효할 때만 읽기 활성화
@@ -98,21 +97,16 @@
          // 읽은 값을 소스 값으로 캡처 (ALU 입력이 됨)
          $src1_value[31:0] = $rf_rd_data1;   // rs1 값
          $src2_value[31:0] = $rf_rd_data2;   // rs2 값
-
+         
+         $br_target_pc[31:0] = $pc + $imm;
+         $inc_pc[31:0] = $pc + 32'd4;
+         $jalr_target_pc[31:0] = $src1_value + $imm;
+      @3
          $result[31:0] = $is_addi ? $src1_value + $imm :        // ADDI: rs1 + imm
                          $is_add  ? $src1_value + $src2_value : // ADD:  rs1 + rs2
                          ($is_load || $is_s_instr) ? $src1_value + $imm :
                          ($is_jal || $is_jalr) ? $inc_pc :
                          32'bx;
-
-         $rf_wr_en = $rd_valid && $rd != 5'b0;   // rd 유효하고 x0이 아닐 때만 쓰기
-         $rf_wr_index[4:0] = $rd;                 // 레지스터 번호
-         $rf_wr_data[31:0] = $is_load ? $dmem_rd_data : $result;
-         
-         $dmem_rd_en = $is_load;
-         $dmem_wr_en = $is_s_instr;
-         $dmem_addr[3:0] = $result[5:2];
-         $dmem_wr_data[31:0] = $src2_value;
          $taken_branch = $is_beq  ? ($src1_value == $src2_value) :
                          $is_bne  ? ($src1_value != $src2_value) :
                          $is_blt  ? (($src1_value < $src2_value) ^ ($src1_value[31] != $src2_value[31])) :
@@ -120,16 +114,26 @@
                          $is_bltu ? ($src1_value < $src2_value) :
                          $is_bgeu ? ($src1_value >= $src2_value) :
                                     1'b0;
-         $br_target_pc[31:0] = $pc + $imm;
-         $inc_pc[31:0] = $pc + 32'd4;
-         $jalr_target_pc[31:0] = $src1_value + $imm;
+         $valid_taken_branch = $taken_branch;
+         $valid_jump = $is_jump;
+         $rf_wr_en = $rd_valid && $rd != 5'b0;   // rd 유효하고 x0이 아닐 때만 쓰기
+         $rf_wr_index[4:0] = $rd;                 // 레지스터 번호
+         $rf_wr_data[31:0] = $is_load ? >>2$ld_data : $result;
+      @4
+         $dmem_rd_en = $is_load;
+         $dmem_wr_en = $is_s_instr;
+         $dmem_addr[3:0] = $result[5:2];
+         $dmem_wr_data[31:0] = $src2_value;
+      @5
+         $ld_data[31:0] = $dmem_rd_data;
+
    *passed = |cpu/xreg[17]>>5$value == (1+2+3+4+5+6+7+8+9);
    *failed = 1'b0;
 
    |cpu
       m4+imem(@1)    // Args: (read stage)
-      m4+rf(@1, @1)  // Args: (read stage, write stage)
-      m4+dmem(@1)
+      m4+rf(@2, @3)  // Args: (read stage, write stage)
+      m4+dmem(@4)
 
     m4+cpu_viz(@4)
 \SV
