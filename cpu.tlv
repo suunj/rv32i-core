@@ -95,8 +95,12 @@
          $rf_rd_index2[4:0] = $rs2;
          
          // 읽은 값을 소스 값으로 캡처 (ALU 입력이 됨)
-         $src1_value[31:0] = $rf_rd_data1;   // rs1 값
-         $src2_value[31:0] = $rf_rd_data2;   // rs2 값
+         $src1_value[31:0] =
+              (>>1$rf_wr_en && (>>1$rf_wr_index == $rf_rd_index1)) ? >>1$result :
+              $rf_rd_data1;
+         $src2_value[31:0] =
+              (>>1$rf_wr_en && (>>1$rf_wr_index == $rf_rd_index2)) ? >>1$result :
+              $rf_rd_data2;
          
          $br_target_pc[31:0] = $pc + $imm;
          $inc_pc[31:0] = $pc + 32'd4;
@@ -114,14 +118,16 @@
                          $is_bltu ? ($src1_value < $src2_value) :
                          $is_bgeu ? ($src1_value >= $src2_value) :
                                     1'b0;
-         $valid_taken_branch = $taken_branch;
-         $valid_jump = $is_jump;
-         $rf_wr_en = $rd_valid && $rd != 5'b0;   // rd 유효하고 x0이 아닐 때만 쓰기
+         $valid = !(>>1$valid_taken_branch || >>2$valid_taken_branch ||
+                    >>1$valid_jump || >>2$valid_jump);
+         $valid_taken_branch = $valid && $taken_branch;
+         $valid_jump = $valid && $is_jump;
+         $rf_wr_en = $valid && $rd_valid && $rd != 5'b0;
          $rf_wr_index[4:0] = $rd;                 // 레지스터 번호
          $rf_wr_data[31:0] = $is_load ? >>2$ld_data : $result;
       @4
          $dmem_rd_en = $is_load;
-         $dmem_wr_en = $is_s_instr;
+         $dmem_wr_en = $valid && $is_s_instr;
          $dmem_addr[3:0] = $result[5:2];
          $dmem_wr_data[31:0] = $src2_value;
       @5
