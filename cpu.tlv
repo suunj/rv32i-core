@@ -29,6 +29,13 @@
    m4_asm(ADD,  r20, r20, r23)
    m4_asm(ADD,  r20, r20, r24)
    m4_asm(SW, r0, r20, 10000)
+   m4_asm(LUI,   r25, 00000000000000000001)
+   m4_asm(ADD,   r20, r20, r25)
+   m4_asm(AUIPC, r26, 00000000000000000000)
+   m4_asm(SUB,   r26, r26, r26)
+   m4_asm(ADD,   r20, r20, r26)
+   m4_asm(SW, r0, r20, 10000)
+   m4_asm(LW, r17, r0, 10000)
    m4_asm(LW, r17, r0, 10000)
    m4_define_hier(['M4_IMEM'], M4_NUM_INSTRS)
    |cpu
@@ -44,21 +51,21 @@
          $imem_rd_en = !$reset;
 
          $instr[31:0] = $imem_rd_data[31:0];
-         $is_u_instr = $instr[6:2] ==? 5'b0x101;      // U-type (LUI, AUIPC)
+         $is_u_instr = $instr[6:2] ==? 5'b0x101;
          
-         $is_s_instr = $instr[6:2] ==? 5'b0100x;      // S-type (SW, SB, SH)
+         $is_s_instr = $instr[6:2] ==? 5'b0100x;
          
-         $is_r_instr = $instr[6:2] ==? 5'b01011 ||    // R-type (ADD, SUB, AND, OR...)
+         $is_r_instr = $instr[6:2] ==? 5'b01011 ||
                        $instr[6:2] ==? 5'b011x0 ||
                        $instr[6:2] ==? 5'b10100;
          
-         $is_j_instr = $instr[6:2] ==? 5'b11011;      // J-type (JAL)
+         $is_j_instr = $instr[6:2] ==? 5'b11011;
          
-         $is_i_instr = $instr[6:2] ==? 5'b0000x ||    // I-type (ADDI, LW, JALR...)
+         $is_i_instr = $instr[6:2] ==? 5'b0000x ||
                        $instr[6:2] ==? 5'b001x0 ||
                        $instr[6:2] ==? 5'b11001;
          
-         $is_b_instr = $instr[6:2] ==? 5'b11000;      // B-type (BEQ, BNE, BLT...)
+         $is_b_instr = $instr[6:2] ==? 5'b11000;
 
          $imm[31:0] = $is_i_instr ? {{21{$instr[31]}}, $instr[30:20]} :
                       $is_s_instr ? {{21{$instr[31]}}, $instr[30:25], $instr[11:7]} :
@@ -113,6 +120,8 @@
          $is_srai  = $dec_bits ==? 11'b1_101_0010011;
          $is_ori   = $dec_bits ==? 11'bx_110_0010011;
          $is_andi  = $dec_bits ==? 11'bx_111_0010011;
+         $is_lui   = $opcode ==? 7'b0110111;
+         $is_auipc = $opcode ==? 7'b0010111;
 
          $rf_rd_en1 = $rs1_valid;
          $rf_rd_index1[4:0] = $rs1;
@@ -157,6 +166,8 @@
               $is_sll   ? $src1_value << $src2_value[4:0] :
               $is_srl   ? $src1_value >> $src2_value[4:0] :
               $is_sra   ? ({{32{$src1_value[31]}}, $src1_value} >> $src2_value[4:0]) :
+              $is_lui   ? {$imm[31:12], 12'b0} :
+              $is_auipc ? $pc + $imm :
               ($is_load || $is_s_instr) ? $src1_value + $imm :
               ($is_jal || $is_jalr) ? $inc_pc :
               32'bx;
@@ -182,7 +193,7 @@
       @5
          $ld_data[31:0] = $dmem_rd_data;
 
-   *passed = |cpu/xreg[17]>>5$value == (2+1+7+6+1+40+0+4+13+6+1);
+   *passed = |cpu/xreg[17]>>5$value == 4177;
    *failed = 1'b0;
 
    |cpu
