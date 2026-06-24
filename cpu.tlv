@@ -5,22 +5,32 @@
 \SV
    m4_makerchip_module   // (Expanded in Nav-TLV pane.)
 \TLV
-
-   // ===== INIT =====
-   m4_asm(ADD, r10, r0, r0)             // r10 = 0 (결과 저장용)
-   m4_asm(ADD, r14, r10, r0)            // r14 = 0 (누적 합계)
-   m4_asm(ADDI, r12, r10, 1010)         // r12 = 10 (루프 한계값)
-   m4_asm(ADD, r13, r10, r0)            // r13 = 0 (카운터)
-   // ===== LOOP =====
-   m4_asm(ADD, r14, r13, r14)           // r14 += r13
-   m4_asm(ADDI, r13, r13, 1)            // r13++
-   m4_asm(BLT, r13, r12, 1111111111000) // r13 < r12이면 루프로 점프 (오프셋 -8)
-   // ===== RESULT =====
-   m4_asm(ADD, r10, r14, r0)            // r10 = r14 (최종 합 45)
-   m4_asm(SW, r0, r10, 10000)
+   m4_asm(ADDI, r1, r0, 101)
+   m4_asm(ADDI, r2, r0, 11)
+   m4_asm(SUB,  r3, r1, r2)
+   m4_asm(AND,  r4, r1, r2)
+   m4_asm(OR,   r5, r1, r2)
+   m4_asm(XOR,  r6, r1, r2)
+   m4_asm(SLT,  r7, r2, r1)
+   m4_asm(SLL,  r8, r1, r2)
+   m4_asm(SRL,  r9, r1, r2)
+   m4_asm(ANDI, r21, r1, 110)
+   m4_asm(ORI,  r22, r1, 1000)
+   m4_asm(XORI, r23, r1, 11)
+   m4_asm(SLTI, r24, r1, 1010)
+   m4_asm(ADD,  r20, r3, r4)
+   m4_asm(ADD,  r20, r20, r5)
+   m4_asm(ADD,  r20, r20, r6)
+   m4_asm(ADD,  r20, r20, r7)
+   m4_asm(ADD,  r20, r20, r8)
+   m4_asm(ADD,  r20, r20, r9)
+   m4_asm(ADD,  r20, r20, r21)
+   m4_asm(ADD,  r20, r20, r22)
+   m4_asm(ADD,  r20, r20, r23)
+   m4_asm(ADD,  r20, r20, r24)
+   m4_asm(SW, r0, r20, 10000)
    m4_asm(LW, r17, r0, 10000)
    m4_define_hier(['M4_IMEM'], M4_NUM_INSTRS)
-
    |cpu
       @0
          $reset = *reset;
@@ -62,39 +72,54 @@
          $opcode[6:0] = $instr[6:0];
          $funct3[2:0] = $instr[14:12];
          $funct7[6:0] = $instr[31:25];
-         $rs1[4:0]    = $instr[19:15];   // 소스 레지스터 1
-         $rs2[4:0]    = $instr[24:20];   // 소스 레지스터 2
-         $rd[4:0]     = $instr[11:7];    // 목적지 레지스터
+         $rs1[4:0]    = $instr[19:15];
+         $rs2[4:0]    = $instr[24:20];
+         $rd[4:0]     = $instr[11:7];
          
          $rs1_valid    = $is_r_instr || $is_i_instr || $is_s_instr || $is_b_instr;
          $rs2_valid    = $is_r_instr || $is_s_instr || $is_b_instr;
          $rd_valid     = $is_r_instr || $is_i_instr || $is_u_instr || $is_j_instr;
       @2
-         // funct7[5] + funct3 + opcode = 1+3+7 = 11비트 디코드 벡터
          $dec_bits[10:0] = {$funct7[5], $funct3, $opcode};
          
-         $is_beq  = $dec_bits ==? 11'bx_000_1100011;  // Branch if Equal
-         $is_bne  = $dec_bits ==? 11'bx_001_1100011;  // Branch if Not Equal
-         $is_blt  = $dec_bits ==? 11'bx_100_1100011;  // Branch if Less Than (signed)
-         $is_bge  = $dec_bits ==? 11'bx_101_1100011;  // Branch if Greater/Equal (signed)
-         $is_bltu = $dec_bits ==? 11'bx_110_1100011;  // Branch if Less Than (unsigned)
-         $is_bgeu = $dec_bits ==? 11'bx_111_1100011;  // Branch if Greater/Equal (unsigned)
-         $is_addi = $dec_bits ==? 11'bx_000_0010011;  // Add Immediate
-         $is_add  = $dec_bits ==? 11'b0_000_0110011;  // Add Register
+         $is_beq  = $dec_bits ==? 11'bx_000_1100011;
+         $is_bne  = $dec_bits ==? 11'bx_001_1100011;
+         $is_blt  = $dec_bits ==? 11'bx_100_1100011;
+         $is_bge  = $dec_bits ==? 11'bx_101_1100011;
+         $is_bltu = $dec_bits ==? 11'bx_110_1100011;
+         $is_bgeu = $dec_bits ==? 11'bx_111_1100011;
+         $is_addi = $dec_bits ==? 11'bx_000_0010011;
+         $is_add  = $dec_bits ==? 11'b0_000_0110011;
          $is_load = $opcode ==? 7'b0000011;
          $is_jal  = $opcode ==? 7'b1101111;
          $is_jalr = $dec_bits ==? 11'bx_000_1100111;
          $is_jump = $is_jal || $is_jalr;
-
-         // Port 1: rs1 읽기
-         $rf_rd_en1 = $rs1_valid;            // rs1이 유효할 때만 읽기 활성화
-         $rf_rd_index1[4:0] = $rs1;          // 읽을 레지스터 번호
          
-         // Port 2: rs2 읽기
+         $is_sub  = $dec_bits ==? 11'b1_000_0110011;
+         $is_sll  = $dec_bits ==? 11'b0_001_0110011;
+         $is_slt  = $dec_bits ==? 11'b0_010_0110011;
+         $is_sltu = $dec_bits ==? 11'b0_011_0110011;
+         $is_xor  = $dec_bits ==? 11'b0_100_0110011;
+         $is_srl  = $dec_bits ==? 11'b0_101_0110011;
+         $is_sra  = $dec_bits ==? 11'b1_101_0110011;
+         $is_or   = $dec_bits ==? 11'b0_110_0110011;
+         $is_and  = $dec_bits ==? 11'b0_111_0110011;
+
+         $is_slli  = $dec_bits ==? 11'b0_001_0010011;
+         $is_slti  = $dec_bits ==? 11'bx_010_0010011;
+         $is_sltiu = $dec_bits ==? 11'bx_011_0010011;
+         $is_xori  = $dec_bits ==? 11'bx_100_0010011;
+         $is_srli  = $dec_bits ==? 11'b0_101_0010011;
+         $is_srai  = $dec_bits ==? 11'b1_101_0010011;
+         $is_ori   = $dec_bits ==? 11'bx_110_0010011;
+         $is_andi  = $dec_bits ==? 11'bx_111_0010011;
+
+         $rf_rd_en1 = $rs1_valid;
+         $rf_rd_index1[4:0] = $rs1;
+         
          $rf_rd_en2 = $rs2_valid;
          $rf_rd_index2[4:0] = $rs2;
          
-         // 읽은 값을 소스 값으로 캡처 (ALU 입력이 됨)
          $src1_value[31:0] =
               (>>1$rf_wr_en && (>>1$rf_wr_index == $rf_rd_index1)) ? >>1$result :
               $rf_rd_data1;
@@ -106,11 +131,35 @@
          $inc_pc[31:0] = $pc + 32'd4;
          $jalr_target_pc[31:0] = $src1_value + $imm;
       @3
-         $result[31:0] = $is_addi ? $src1_value + $imm :        // ADDI: rs1 + imm
-                         $is_add  ? $src1_value + $src2_value : // ADD:  rs1 + rs2
-                         ($is_load || $is_s_instr) ? $src1_value + $imm :
-                         ($is_jal || $is_jalr) ? $inc_pc :
-                         32'bx;
+         $sltu_rslt[31:0]  = {31'b0, $src1_value < $src2_value};
+         $slt_rslt[31:0]   = {31'b0, (($src1_value < $src2_value) ^
+                                      ($src1_value[31] != $src2_value[31]))};
+         $sltiu_rslt[31:0] = {31'b0, $src1_value < $imm};
+         $slti_rslt[31:0]  = {31'b0, (($src1_value < $imm) ^
+                                      ($src1_value[31] != $imm[31]))};
+         $result[31:0] =
+              $is_addi  ? $src1_value + $imm :
+              $is_andi  ? $src1_value & $imm :
+              $is_ori   ? $src1_value | $imm :
+              $is_xori  ? $src1_value ^ $imm :
+              $is_slti  ? $slti_rslt :
+              $is_sltiu ? $sltiu_rslt :
+              $is_slli  ? $src1_value << $imm[4:0] :
+              $is_srli  ? $src1_value >> $imm[4:0] :
+              $is_srai  ? ({{32{$src1_value[31]}}, $src1_value} >> $imm[4:0]) :
+              $is_add   ? $src1_value + $src2_value :
+              $is_sub   ? $src1_value - $src2_value :
+              $is_and   ? $src1_value & $src2_value :
+              $is_or    ? $src1_value | $src2_value :
+              $is_xor   ? $src1_value ^ $src2_value :
+              $is_slt   ? $slt_rslt :
+              $is_sltu  ? $sltu_rslt :
+              $is_sll   ? $src1_value << $src2_value[4:0] :
+              $is_srl   ? $src1_value >> $src2_value[4:0] :
+              $is_sra   ? ({{32{$src1_value[31]}}, $src1_value} >> $src2_value[4:0]) :
+              ($is_load || $is_s_instr) ? $src1_value + $imm :
+              ($is_jal || $is_jalr) ? $inc_pc :
+              32'bx;
          $taken_branch = $is_beq  ? ($src1_value == $src2_value) :
                          $is_bne  ? ($src1_value != $src2_value) :
                          $is_blt  ? (($src1_value < $src2_value) ^ ($src1_value[31] != $src2_value[31])) :
@@ -123,7 +172,7 @@
          $valid_taken_branch = $valid && $taken_branch;
          $valid_jump = $valid && $is_jump;
          $rf_wr_en = $valid && $rd_valid && $rd != 5'b0;
-         $rf_wr_index[4:0] = $rd;                 // 레지스터 번호
+         $rf_wr_index[4:0] = $rd;
          $rf_wr_data[31:0] = $is_load ? >>2$ld_data : $result;
       @4
          $dmem_rd_en = $is_load;
@@ -133,7 +182,7 @@
       @5
          $ld_data[31:0] = $dmem_rd_data;
 
-   *passed = |cpu/xreg[17]>>5$value == (1+2+3+4+5+6+7+8+9);
+   *passed = |cpu/xreg[17]>>5$value == (2+1+7+6+1+40+0+4+13+6+1);
    *failed = 1'b0;
 
    |cpu
@@ -141,6 +190,5 @@
       m4+rf(@2, @3)  // Args: (read stage, write stage)
       m4+dmem(@4)
 
-    m4+cpu_viz(@4)
 \SV
    endmodule
