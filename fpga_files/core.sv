@@ -96,13 +96,19 @@
                          (CPU_is_load_a3 || CPU_is_s_instr_a3) ? CPU_src1_value_a3 + CPU_imm_a3 :
                          (CPU_is_jal_a3 || CPU_is_jalr_a3) ? CPU_inc_pc_a3 :
                          32'bx;
-         assign CPU_taken_branch_a3 = CPU_is_beq_a3  ? (CPU_src1_value_a3 == CPU_src2_value_a3) :
-                         CPU_is_bne_a3  ? (CPU_src1_value_a3 != CPU_src2_value_a3) :
-                         CPU_is_blt_a3  ? ((CPU_src1_value_a3 < CPU_src2_value_a3) ^ (CPU_src1_value_a3[31] != CPU_src2_value_a3[31])) :
-                         CPU_is_bge_a3  ? ((CPU_src1_value_a3 >= CPU_src2_value_a3) ^ (CPU_src1_value_a3[31] != CPU_src2_value_a3[31])) :
-                         CPU_is_bltu_a3 ? (CPU_src1_value_a3 < CPU_src2_value_a3) :
-                         CPU_is_bgeu_a3 ? (CPU_src1_value_a3 >= CPU_src2_value_a3) :
-                                    1'b0;
+         branch_unit u_branch_unit (
+            .src1_i   (CPU_src1_value_a3),
+            .src2_i   (CPU_src2_value_a3),
+
+            .is_beq_i (CPU_is_beq_a3),
+            .is_bne_i (CPU_is_bne_a3),
+            .is_blt_i (CPU_is_blt_a3),
+            .is_bge_i (CPU_is_bge_a3),
+            .is_bltu_i(CPU_is_bltu_a3),
+            .is_bgeu_i(CPU_is_bgeu_a3),
+
+            .taken_o  (CPU_taken_branch_a3)
+         );
          assign CPU_valid_a3 = !(CPU_valid_taken_branch_a4 || CPU_valid_taken_branch_a5 ||
                     CPU_valid_jump_a4 || CPU_valid_jump_a5);
          assign CPU_valid_taken_branch_a3 = CPU_valid_a3 && CPU_taken_branch_a3;
