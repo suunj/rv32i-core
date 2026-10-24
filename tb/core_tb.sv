@@ -26,6 +26,8 @@ module core_tb;
     );
 
     initial begin
+        $dumpfile("cpu.vcd");
+        $dumpvars(0, core_tb);
         repeat (10) @(negedge clk);
         reset = 0;
 

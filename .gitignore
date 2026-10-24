@@ -1,3 +1,5 @@
 
 # Verilator build output
 obj_dir/
+
+*.vcd

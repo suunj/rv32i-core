@@ -35,41 +35,25 @@
          assign CPU_imem_rd_en_a1 = !CPU_reset_a1;
 
          assign CPU_instr_a1[31:0] = CPU_imem_rd_data_a1[31:0];
-         assign CPU_is_u_instr_a1 = CPU_instr_a1[6:2] ==? 5'b0x101;      // U-type (LUI, AUIPC)
-         
-         assign CPU_is_s_instr_a1 = CPU_instr_a1[6:2] ==? 5'b0100x;      // S-type (SW, SB, SH)
-         
-         assign CPU_is_r_instr_a1 = CPU_instr_a1[6:2] ==? 5'b01011 ||    // R-type (ADD, SUB, AND, OR...)
-                       CPU_instr_a1[6:2] ==? 5'b011x0 ||
-                       CPU_instr_a1[6:2] ==? 5'b10100;
-         
-         assign CPU_is_j_instr_a1 = CPU_instr_a1[6:2] ==? 5'b11011;      // J-type (JAL)
-         
-         assign CPU_is_i_instr_a1 = CPU_instr_a1[6:2] ==? 5'b0000x ||    // I-type (ADDI, LW, JALR...)
-                       CPU_instr_a1[6:2] ==? 5'b001x0 ||
-                       CPU_instr_a1[6:2] ==? 5'b11001;
-         
-         assign CPU_is_b_instr_a1 = CPU_instr_a1[6:2] ==? 5'b11000;      // B-type (BEQ, BNE, BLT...)
-
-         assign CPU_imm_a1[31:0] = CPU_is_i_instr_a1 ? {{21{CPU_instr_a1[31]}}, CPU_instr_a1[30:20]} :
-                      CPU_is_s_instr_a1 ? {{21{CPU_instr_a1[31]}}, CPU_instr_a1[30:25], CPU_instr_a1[11:7]} :
-                      CPU_is_b_instr_a1 ? {{20{CPU_instr_a1[31]}}, CPU_instr_a1[7], CPU_instr_a1[30:25],
-                                     CPU_instr_a1[11:8], 1'b0} :
-                      CPU_is_u_instr_a1 ? {CPU_instr_a1[31:12], 12'b0} :
-                      CPU_is_j_instr_a1 ? {{12{CPU_instr_a1[31]}}, CPU_instr_a1[19:12], CPU_instr_a1[20],
-                                     CPU_instr_a1[30:21], 1'b0} :
-                      32'b0;
-
-         assign CPU_opcode_a1[6:0] = CPU_instr_a1[6:0];
-         assign CPU_funct3_a1[2:0] = CPU_instr_a1[14:12];
-         assign CPU_funct7_a1[6:0] = CPU_instr_a1[31:25];
-         assign CPU_rs1_a1[4:0]    = CPU_instr_a1[19:15];   // 소스 레지스터 1
-         assign CPU_rs2_a1[4:0]    = CPU_instr_a1[24:20];   // 소스 레지스터 2
-         assign CPU_rd_a1[4:0]     = CPU_instr_a1[11:7];    // 목적지 레지스터
-         
-         assign CPU_rs1_valid_a1    = CPU_is_r_instr_a1 || CPU_is_i_instr_a1 || CPU_is_s_instr_a1 || CPU_is_b_instr_a1;
-         assign CPU_rs2_valid_a1    = CPU_is_r_instr_a1 || CPU_is_s_instr_a1 || CPU_is_b_instr_a1;
-         assign CPU_rd_valid_a1     = CPU_is_r_instr_a1 || CPU_is_i_instr_a1 || CPU_is_u_instr_a1 || CPU_is_j_instr_a1;
+         instruction_decoder u_instruction_decoder (
+             .instr_i(CPU_instr_a1),
+             .is_u_instr_o(CPU_is_u_instr_a1),
+             .is_s_instr_o(CPU_is_s_instr_a1),
+             .is_r_instr_o(CPU_is_r_instr_a1),
+             .is_j_instr_o(CPU_is_j_instr_a1),
+             .is_i_instr_o(CPU_is_i_instr_a1),
+             .is_b_instr_o(CPU_is_b_instr_a1),
+             .imm_o(CPU_imm_a1),
+             .opcode_o(CPU_opcode_a1),
+             .funct3_o(CPU_funct3_a1),
+             .funct7_o(CPU_funct7_a1),
+             .rs1_o(CPU_rs1_a1),
+             .rs2_o(CPU_rs2_a1),
+             .rd_o(CPU_rd_a1),
+             .rs1_valid_o(CPU_rs1_valid_a1),
+             .rs2_valid_o(CPU_rs2_valid_a1),
+             .rd_valid_o(CPU_rd_valid_a1)
+         );
       //_@2
          // funct7[5] + funct3 + opcode = 1+3+7 = 11비트 디코드 벡터
          assign CPU_dec_bits_a2[10:0] = {CPU_funct7_a2[5], CPU_funct3_a2, CPU_opcode_a2};
