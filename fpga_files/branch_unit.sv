@@ -1,3 +1,5 @@
+`timescale 1ns/1ps
+
 module branch_unit (
     input  logic [31:0] src1_i,
     input  logic [31:0] src2_i,
